@@ -2,58 +2,97 @@
 
 class phpEditSubtitles {
 	
+	/** @var string */
 	private $file = '';
+	
+	/** @var array */
 	private $subtitles = array();
 	
-	public function addSubtitle($order,$timeIni,$timeEnd,$subtitle) {
+	/*
+	* Add a row to array $subtitles
+	* @param: int $order
+	* @param: string $timeIni
+	* @param: string $timeEnd
+	* @param: string $subtitle
+	* @param: bool $moveTime (default: true)
+	*/
+	public function addSubtitle($order,$timeIni,$timeEnd,$subtitle,$moveTime = true) {
 		// verify time consistence
-		$timeRight = $this->verifyTimeConsistence($order,$timeIni,$timeEnd);
-		if(!$timeRight) {
-			return;
-		}
+		$this->verifyTimeConsistence($order,$timeIni,$timeEnd);
 		
+		// create the array
 		$arrParams[] = array(
 			'order' => $order,
 			'time_ini' => $timeIni,
 			'time_end' => $timeEnd,
 			'subtitle' => utf8_decode($subtitle)."\r\n",
 		);
+		
+		// if I want to move the time of the consecuents rows it must to be true
+		if($moveTime) $this->verifyTimeMovement($order,$timeIni,$timeEnd);
+		
+		// add row
 		array_splice( $this->subtitles, ($order-1), 0, $arrParams );
-		$this->verifyTimeMovement($order);
 	}
 	
+	/*
+	* Delete row from array $subtitles
+	* @param: int $order
+	*/
 	public function deleteSubtitle($order) {
 		$subtitles = $this->getSubtitles();
 		unset($subtitles[($order-1)]);
 		$this->setSubtitles(array_values($subtitles));
 	}
 	
-	public function editSubtitle($order,$timeIni,$timeEnd,$subtitle) {
+	/*
+	* Edit row on array $subtitles
+	* @param: int $order
+	* @param: string $timeIni
+	* @param: string $timeEnd
+	* @param: string $subtitle
+	* @param: bool $moveTime (default: true)
+	*/
+	public function editSubtitle($order,$timeIni,$timeEnd,$subtitle,$moveTime = true) {
 		// verify time consistence
-		$timeRight = $this->verifyTimeConsistence($order,$timeIni,$timeEnd);
-		if(!$timeRight) {
-			return;
-		}
+		$this->verifyTimeConsistence($order,$timeIni,$timeEnd);
 		
+		// create the array
 		$arrParams[] = array(
 			'order' => $order,
 			'time_ini' => $timeIni,
 			'time_end' => $timeEnd,
 			'subtitle' => utf8_decode($subtitle)."\r\n",
 		);
+		
+		// if I want to move the time of the consecuents rows it must to be true
+		if($moveTime) $this->verifyTimeMovement($order,$timeIni,$timeEnd);
+		
+		// replace row
 		array_splice( $this->subtitles, ($order-1), 1, $arrParams );
-		$this->verifyTimeMovement($order);
 	}
 	
+	/*
+	* List array $subtitles
+	* @return: array
+	*/
 	public function listSubtitles() {
 		return $this->getSubtitles();
 	}
 	
+	/*
+	* Save file
+	* @param: string $newFile
+	*/
 	public function saveFile($newFile = '') {
 		if(empty($newFile)) $newFile = time().'_edited_subtitles.srt';
 		@file_put_contents($newFile,$this->dumpSubtitles());
 	}
 	
+	/*
+	* Dump array $subtitles into a string
+	* @return: string $dump
+	*/
 	private function dumpSubtitles() {
 		$dump = '';
 		for($i=0;$i<count($this->subtitles);$i++) {
@@ -64,48 +103,31 @@ class phpEditSubtitles {
 		return $dump;
 	}
 	
-	private function verifyTimeMovement($order) {
+	/*
+	* Verify if have to move time of the consecuents rows
+	* @param: int $order
+	* @param: string $timeIni
+	* @param: string $timeEnd
+	*/
+	private function verifyTimeMovement($order,$timeIni,$timeEnd) {
 		// get the time ini/end
 		$currTimeIni = $this->timeToMilliseconds($this->subtitles[($order-1)]['time_ini']);
 		$currTimeEnd = $this->timeToMilliseconds($this->subtitles[($order-1)]['time_end']);
 		
-		// get the time ini/end
-		$currTimeIniPrev = $currTimeIni;
-		$currTimeEndPrev = $currTimeEnd;
-		// lookup in subtitles for the prev/next time
-		// next time
-		$arrNext = array();
-		for($i=$order;$i<count($this->subtitles);$i++) {
-			$eachTimeIni = $this->timeToMilliseconds($this->subtitles[$i]['time_ini']);
-			$eachTimeEnd = $this->timeToMilliseconds($this->subtitles[$i]['time_end']);
-			if($currTimeEnd > $eachTimeIni) {
-				$newEachMillisecondsIni = $eachTimeIni+($currTimeEnd - $eachTimeIni);
-				$newEachTimeIni = $this->millisecondsToTime($newEachMillisecondsIni);
-				$newEachTimeEnd = $this->millisecondsToTime($newEachMillisecondsIni+($eachTimeEnd-$eachTimeIni));
-				$arrNext[] = array('pos' => $i, 'time_ini' => $newEachTimeIni, 'time_end' => $newEachTimeEnd);
-				$this->subtitles[$i]['time_ini'] = $newEachTimeIni;
-				$this->subtitles[$i]['time_end'] = $newEachTimeEnd;
-				$currTimeEnd = $newEachMillisecondsIni+($eachTimeEnd-$eachTimeIni);
-			}
-		}
-
-		// prev time
-		$arrPrev = array();
-		for($i=($order-2);$i>-1;$i--) {
-			$eachTimeIni = $this->timeToMilliseconds($this->subtitles[$i]['time_ini']);
-			$eachTimeEnd = $this->timeToMilliseconds($this->subtitles[$i]['time_end']);
-			if($currTimeIniPrev < $eachTimeEnd) {
-				$newEachMillisecondsEnd = $eachTimeEnd-($eachTimeEnd-$currTimeIniPrev);
-				$newEachTimeEnd = $this->millisecondsToTime($newEachMillisecondsEnd);
-				$newEachTimeIni = $this->millisecondsToTime($newEachMillisecondsEnd-($eachTimeEnd-$eachTimeIni));
-				$arrPrev[] = array('pos' => $i, 'time_ini' => $newEachTimeIni, 'time_end' => $newEachTimeEnd, 'diff' => $eachTimeEnd-$eachTimeIni);
-				$this->subtitles[$i]['time_ini'] = $newEachTimeIni;
-				$this->subtitles[$i]['time_end'] = $newEachTimeEnd;
-				$currTimeIniPrev = $newEachMillisecondsEnd-($eachTimeEnd-$eachTimeIni);
-			}
-		}		
+		$currTimeIniNew = $this->timeToMilliseconds($timeIni);
+		$currTimeEndNew = $this->timeToMilliseconds($timeEnd);
+		
+		$diffTimeIni = $currTimeIniNew - $currTimeIni;
+		$diffTimeEnd = $currTimeEndNew - $currTimeEnd;
+		
+		$this->moveTime($order,$diffTimeIni,$diffTimeEnd);	
 	}
 	
+	/*
+	* Convert time string into milliseconds
+	* @param: string $time
+	* @return: int $milliseconds
+	*/
 	private function timeToMilliseconds($time) {
 		$arr = explode(":",$time);
 		$arr2 = explode(",",$arr[2]);
@@ -117,6 +139,11 @@ class phpEditSubtitles {
 		return $milliseconds;
 	}
 	
+	/*
+	* Convert time milliseconds to format hs:mi:ss,mil
+	* @param: int $milliseconds
+	* @return: string $time
+	*/
 	private function millisecondsToTime($milliseconds) {
 		$sc = floor($milliseconds / 1000);
 		$mi = floor($sc / 60);
@@ -130,34 +157,88 @@ class phpEditSubtitles {
 		return $time;
 	}
 	
+	/*
+	* Verify time consistence
+	* @param: int $order
+	* @param: string $timeIni
+	* @param: string $timeEnd
+	*/
 	private function verifyTimeConsistence($order,$timeIni,$timeEnd) {
 		// get the time ini/end
 		$currTimeIni = $this->timeToMilliseconds($timeIni);
 		$currTimeEnd = $this->timeToMilliseconds($timeEnd);
-		$consistence = 0;
-		if($currTimeIni < $currTimeEnd) {
-			$consistence += 1;
-		} else {
-			echo '<p>inconsistence of time';
+		
+		// verify time consistence
+		if($currTimeIni > $currTimeEnd) {
+			die('Inconsistence of time');
 		}
 		
+		// get the total amount of time
 		$arrMountOfTime = $this->getAmountOfTime($order);
 		
-		if($currTimeIni > $arrMountOfTime['toStart']) {
-			$consistence += 1;
-		} else {
-			echo '<p>Time start exceded';
+		// verify if current time initial is smaller than the amount of time from current time until start
+		if($currTimeIni < $arrMountOfTime['toStart']) {
+			die('Time start exceded');
 		}
 		
-		if($currTimeEnd < $arrMountOfTime['toEnd']) {
-			$consistence += 1;
-		} else {
-			echo '<p>Time end exceded';
+		// verify if current time finel is bigger than the amount of time from current time until the end
+		if($currTimeEnd > $arrMountOfTime['toEnd']) {
+			die('Time end exceded');
 		}
-		
-		return ($consistence>2)?true:false;
 	}
 	
+	/*
+	* Move time for all rows
+	* @param: int $order
+	* @param: int $diffIni
+	* @param: int $diffEnd
+	*/
+	private function moveTime($order,$diffIni,$diffEnd) {
+		$arrSub = array();
+		
+		// move the time for consecuents rows greater than current time
+		for($i=0;$i<count($this->subtitles);$i++) {
+			if($i > ($order-1)) {
+				$eachTimeIni = $this->timeToMilliseconds($this->subtitles[$i]['time_ini']);
+				$eachTimeEnd = $this->timeToMilliseconds($this->subtitles[$i]['time_end']);
+				$timeIni = $this->millisecondsToTime($eachTimeIni + $diffEnd);
+				$timeEnd = $this->millisecondsToTime($eachTimeEnd + $diffEnd);
+				$this->subtitles[$i]['time_ini'] = $timeIni;
+				$this->subtitles[$i]['time_end'] = $timeEnd;
+			}
+		}
+		
+		// get the current time initial before change
+		$currTimeIni = $this->timeToMilliseconds($this->subtitles[($order-1)]['time_ini'])+$diffIni;
+
+		// move the time for consecuents rows smaller than current time
+		if($diffIni < 0) {
+			for($i=($order-1);$i>-1;$i--) {
+				if($i < ($order-1)) {
+					$eachTimeIni = $this->timeToMilliseconds($this->subtitles[$i]['time_ini']);
+					$eachTimeEnd = $this->timeToMilliseconds($this->subtitles[$i]['time_end']);
+					$eachDiff = $eachTimeEnd - $eachTimeIni;
+					 
+					if($currTimeIni < $eachTimeEnd) {
+						$eachNewTimeIni = (($eachTimeIni + $diffIni)<0?0:($eachTimeIni + $diffIni));
+						$eachNewTimeEnd = (($eachTimeEnd + $diffIni)<0?0:($eachTimeEnd + $diffIni));
+						
+						$timeIni = $this->millisecondsToTime($eachNewTimeIni);
+						$timeEnd = $this->millisecondsToTime($eachNewTimeEnd);
+						$this->subtitles[$i]['time_ini'] = $timeIni;
+						$this->subtitles[$i]['time_end'] = $timeEnd;
+						$currTimeIni = $timeIni;
+					}
+				}
+			}
+		}
+	}
+	
+	/*
+	* Get amount of time from current position until start and end
+	* @param: int $order
+	* @return array
+	*/
 	private function getAmountOfTime($order) {
 
 		$millisecondsToStart = 0;
@@ -176,6 +257,9 @@ class phpEditSubtitles {
 		return array('toStart' => $millisecondsToStart, 'toEnd' => $millisecondsToEnd);
 	}
 	
+	/*
+	* Read file
+	*/
 	public function readFile() {
 		$handle = @fopen($this->getFile(),"r");
 	
@@ -214,6 +298,11 @@ class phpEditSubtitles {
 		}
 	}
 	
+	/*
+	* Find block of subtitles
+	* @param: string $string
+	* @return: array
+	*/
 	public function findSubtitleBlock($string) {
 		$arr['found'] = false;
 		$pattern = ' --> '; 
@@ -226,6 +315,7 @@ class phpEditSubtitles {
 		return $arr;
 	}
 
+	/* Getters and Setters */
 	public function setFile($file) {
 		$this->file = $file;
 	}

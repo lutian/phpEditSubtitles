@@ -7,22 +7,22 @@ $st = new phpEditSubtitles();
 $st->setFile('test.srt');
 $st->readFile();
 
-// Edit the first subtitle
+// Edit subtitle on position 23
 // IMPORTANT: it will reordenate the time. If the amount of time is smaller than $timeIni or bigger than $timeEnd the request will not be processed
-$order    = 1;
-$timeIni  = '00:00:00,090';
-$timeEnd  = '00:00:01,830';
-$subtitle = 'Replace the first subtitle';
+$order    = 23;
+$timeIni  = '00:01:10,880';
+$timeEnd  = '00:01:18,830';
+$subtitle = 'Edit subtitle';
 $st->editSubtitle($order,$timeIni,$timeEnd,$subtitle);
 
-// remove subtitle in position 25
+// remove subtitle on position 25
 $st->deleteSubtitle(25);
 
-// add subtitle on position 145
+// add subtitle on position 25
 // IMPORTANT: it will reordenate the time. If the amount of time is smaller than $timeIni or bigger than $timeEnd the request will not be processed
-$order    = 145;
-$timeIni  = '00:05:05,050';
-$timeEnd  = '00:08:05,130';
+$order    = 25;
+$timeIni  = '00:01:31,010';
+$timeEnd  = '00:01:32,790';
 $subtitle = 'New subtitle';
 $st->addSubtitle($order,$timeIni,$timeEnd,$subtitle);
 
