@@ -5,6 +5,8 @@ include('phpEditSubtitles.php');
 $st = new phpEditSubtitles();
 
 $st->setFile('test.srt');
+// set output type to vtt (it will convert from srt to vtt type)
+$st->setType('vtt');
 $st->readFile();
 
 // Edit subtitle on position 23
@@ -27,7 +29,7 @@ $subtitle = 'New subtitle';
 $st->addSubtitle($order,$timeIni,$timeEnd,$subtitle);
 
 // save subtitles in a new file
-$st->saveFile('newfile.srt');
+$st->saveFile('newfile');
 
 // get array of subtitles
 $subtitles = $st->getSubtitles();

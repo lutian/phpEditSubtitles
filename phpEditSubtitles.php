@@ -2,8 +2,16 @@
 
 class phpEditSubtitles {
 	
+	private $version = '1.1';
+	
 	/** @var string */
 	private $file = '';
+	
+	/** @var string */
+	private $type = 'srt';
+	
+	/** @var string */
+	private $originalType = 'srt';
 	
 	/** @var array */
 	private $subtitles = array();
@@ -85,7 +93,8 @@ class phpEditSubtitles {
 	* @param: string $newFile
 	*/
 	public function saveFile($newFile = '') {
-		if(empty($newFile)) $newFile = time().'_edited_subtitles.srt';
+		if(empty($newFile)) $newFile = time().'_edited_subtitles.'.$this->getType();
+		else $newFile = $newFile.'.'.$this->getType();
 		@file_put_contents($newFile,$this->dumpSubtitles());
 	}
 	
@@ -96,7 +105,9 @@ class phpEditSubtitles {
 	private function dumpSubtitles() {
 		$dump = '';
 		for($i=0;$i<count($this->subtitles);$i++) {
-			$dump .= ($i+1)."\r";
+			if($this->type == 'srt') $dump .= ($i+1)."\r";
+			$this->subtitles[$i]['time_ini'] = $this->convertType($this->subtitles[$i]['time_ini']);
+			$this->subtitles[$i]['time_end'] = $this->convertType($this->subtitles[$i]['time_end']);
 			$dump .= $this->subtitles[$i]['time_ini'].' --> '.$this->subtitles[$i]['time_end']."\r";
 			$dump .= $this->subtitles[$i]['subtitle']."\r\n";
 		}
@@ -130,7 +141,8 @@ class phpEditSubtitles {
 	*/
 	private function timeToMilliseconds($time) {
 		$arr = explode(":",$time);
-		$arr2 = explode(",",$arr[2]);
+		if(strpos(".",$arr[2]) !== false) $arr2 = explode(".",$arr[2]);
+		else $arr2 = explode(",",$arr[2]);
 		$hs = $arr[0];
 		$mi = $arr[1];
 		$sc = $arr2[0];
@@ -152,7 +164,8 @@ class phpEditSubtitles {
 		$sc = $sc % 60;
 		$mi = $mi % 60;
 		
-		$format = '%02u:%02u:%02u,%03u';
+		if($this->type == 'vtt') $format = '%02u:%02u:%02u.%03u';
+		else $format = '%02u:%02u:%02u,%03u';
 		$time = sprintf($format, $hs, $mi, $sc, $milliseconds); 
 		return $time;
 	}
@@ -262,6 +275,8 @@ class phpEditSubtitles {
 	*/
 	public function readFile() {
 		$handle = @fopen($this->getFile(),"r");
+		
+		$this->detectFileType($this->getFile());
 	
 		$arrSubtitle = array();
 		$i = 0;
@@ -314,6 +329,31 @@ class phpEditSubtitles {
 		}
 		return $arr;
 	}
+	
+	/*
+	* Convert time from originalType to new type (srt -> vtt or vtt -> srt)
+	*/
+	private function convertType($time) {
+		if($this->originalType != $this->getType()) return $this->millisecondsToTime($this->timeToMilliseconds($time));
+		else return $time;
+	}
+	
+	/*
+	* Detect type of original file
+	*/
+	private function detectFileType($file){
+		$ext = pathinfo($file, PATHINFO_EXTENSION);
+		switch($ext){
+			case "srt":
+			case "vtt":
+				$type = $ext;
+				break;
+			default:
+				$type = 'srt';
+				break;
+		}
+		$this->originalType = $type;
+	}
 
 	/* Getters and Setters */
 	public function setFile($file) {
@@ -322,6 +362,14 @@ class phpEditSubtitles {
 	
 	public function getFile() {
 		return $this->file;
+	}
+	
+	public function setType($type) {
+		$this->type = $type;
+	}
+	
+	public function getType() {
+		return $this->type;
 	}
 
 	public function setSubtitles($subtitles) {

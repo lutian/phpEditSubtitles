@@ -4,10 +4,11 @@
 > text processing
 
 
-Edit files of video subtitles. You can add, edit or delete subtitles and save into new file in .srt format
+Edit files of video subtitles. You can add, edit or delete subtitles and save into new file in .srt or .vtt format
+New: you can convert from SRT to VTT format
 
 ### Version
-0.1
+1.1
 
 ### Authors
 
@@ -36,6 +37,8 @@ include('phpEditSubtitles.php');
 $st = new phpEditSubtitles();
 
 $st->setFile('test.srt');
+// set output type to vtt (it will convert from srt to vtt type)
+$st->setType('vtt');
 $st->readFile();
 
 // Edit the first subtitle
